@@ -2,6 +2,7 @@ import argparse
 from mpi4py import MPI
 
 from master import Master
+from worker import Worker
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -31,4 +32,6 @@ data = comm.scatter(data)
 if rank==0:
     pass
 else:
-    pass
+    print("rank:",rank,"number of sentences:",len(data))
+    worker = Worker(data,args.merge_method)
+    worker.merge()
