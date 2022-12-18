@@ -13,7 +13,7 @@ def parse_args():
     return args
 
 args=parse_args()
-
+master = None
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -33,5 +33,6 @@ if rank==0:
     pass
 else:
     print("rank:",rank,"number of sentences:",len(data))
-    worker = Worker(data,args.merge_method)
+    #print(data)
+    worker = Worker(data,args.merge_method, master)
     worker.merge()
