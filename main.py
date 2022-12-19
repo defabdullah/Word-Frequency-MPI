@@ -19,8 +19,8 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 worker_num = size-1
 
+master = Master(worker_num)
 if rank == 0:
-    master = Master(worker_num)
     data = master.even_distributed_data(args.input_file)
 else:
     data = None
@@ -28,11 +28,18 @@ else:
 data = comm.scatter(data)
 
 ## Burada her worker datayı aldı
-
+method = parse_args().merge_method
 if rank==0:
-    pass
+    #print("rank:",rank,"number of sentences:",len(data))
+    if method == "MASTER":
+        unigram_count, bigram_count = master.receive_and_merge_master()
+    else:
+        unigram_count, bigram_count = master.receive_and_merge_worker()
+    print(f'unigram count: {unigram_count}', f'bigram count: {bigram_count}', sep="\n")
+    #pass
 else:
-    print("rank:",rank,"number of sentences:",len(data))
+    worker = Worker(data,args.merge_method, master, rank)
+    print("rank:",worker.rank,"number of sentences:",len(worker.data))
     #print(data)
-    worker = Worker(data,args.merge_method, master)
     worker.merge()
+
