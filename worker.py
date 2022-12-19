@@ -1,7 +1,5 @@
 from mpi4py import MPI
 
-
-
 class Worker():
     def __init__(self,data,merge_method, master, rank):
         self.data=data
@@ -10,100 +8,65 @@ class Worker():
         self.rank = rank
         self.comm = MPI.COMM_WORLD
         
-    def unigram_counter(self, data):
-        res = list()
-        count_res = list()
-        for d in data:
+    def unigram_counter(self):
+        res = dict()
+        for d in self.data:
             d = d.split()
-            res.append(d)
-            count_res.append(len(d))
-        return res, count_res
+            for unigram in d:
+                if unigram not in res:
+                    res[unigram]=1
+                else:
+                    res[unigram]+=1
+        return res
 
-    def bigram_counter(self, data):
-        res = list()
-        count_res = list()
-        for d in data:
-            tmp = list()
+    def bigram_counter(self):
+        res = dict()
+        for d in self.data:
             d = d.split()
             for i in range(len(d) - 1):
-                tmp.append(d[i:i+2])
-            res.append(tmp)
-            count_res.append(len(tmp))
-        return res, count_res
+                bigram=d[i]+" "+d[i+1]
+                if bigram not in res:
+                    res[bigram]=1
+                else:
+                    res[bigram]+=1
+        return res
     
-    def master_unigram_counter(self, data):
-        _, count_res = self.unigram_counter(data)
-        #print(res)
-        #return res
-        #print(count_res)
-        #return count_res
-        self.comm.send(count_res, dest=0, tag=11)
-        #print("sent unigrams")
-        
-    def master_bigram_counter(self, data):
-        _, count_res = self.bigram_counter(data)
-        #print(res)
-        #return res
-        #print(count_res)
-        #return count_res
-        self.comm.send(count_res, dest=0, tag=12)
-        #print("sent bigrams")
-    
-    def worker_unigram_counter(self, data, master):
-        _, count_res = self.unigram_counter(data)
-        if self.rank == 1:#sadece sent
-            #print("if")
-            #print(count_res)
-            self.comm.send(count_res, dest=self.rank+1, tag=11)
+    def worker_method_channel(self, tag):
+        if(tag==11):
+            result = self.unigram_counter()
+        elif(tag==12):
+            result = self.bigram_counter()
+        else:
+            raise Exception("Wrong n-gram type") 
+
+        if self.rank == 1:
+            self.comm.send(result, dest=self.rank+1, tag = tag)
             
-        elif self.rank < master.worker_num:#önce receive, sonra sent
-            #print("elif")
-            received = self.comm.recv(source = self.rank-1, tag = 11)
-            received.extend(count_res)
-            #print(received)
-            self.comm.send(received, dest=self.rank+1, tag=11)
-            
-        else:#sadece receive
-            #print("else")
-            received = self.comm.recv(source = self.rank-1, tag = 11)
-            received.extend(count_res)
-            #print(received)
-            self.comm.send(received, dest=0, tag=11)
-            
-    def worker_bigram_counter(self, data, master):
-        _, count_res = self.bigram_counter(data)
-        if self.rank == 1:#sadece sent
-            #print("if")
-            #print(count_res)
-            self.comm.send(count_res, dest=self.rank+1, tag=12)
-            
-        elif self.rank < master.worker_num:#önce receive, sonra sent
-            #print("elif")
-            received = self.comm.recv(source = self.rank-1, tag = 12)
-            received.extend(count_res)
-            #print(received)
-            self.comm.send(received, dest=self.rank+1, tag=12)
-            
-        else:#sadece receive
-            #print("else")
-            received = self.comm.recv(source = self.rank-1, tag = 12)
-            received.extend(count_res)
-            #print(received)
-            self.comm.send(received, dest=0, tag=12)  
+        else:
+            received = self.comm.recv(source = self.rank-1, tag = tag)
+            for key in result.keys():
+                if key not in received:
+                    received[key]=0
+                received[key]+=result[key]
+                
+            destination = self.rank+1
+            if(self.rank==self.master.worker_num):
+                destination=0
+            self.comm.send(received, dest=destination, tag = tag)
     
     def master_merge(self):
-        #print("master merge is called")
-        self.master_unigram_counter(self.data)
-        self.master_bigram_counter(self.data)
+        unigrams = self.unigram_counter()
+        bigrams = self.bigram_counter()
+
+        self.comm.send(unigrams, dest=0, tag=11)
+        self.comm.send(bigrams, dest=0, tag=12)
     
     def worker_merge(self):
-        #print("worker merge is called.")
-        self.worker_unigram_counter(self.data, self.master)
-        self.worker_bigram_counter(self.data, self.master)
+        self.worker_method_channel(11)
+        self.worker_method_channel(12)
     
     def merge(self):
         if self.merge_method=="WORKERS":
             return self.worker_merge()
         elif self.merge_method=="MASTER":
             return self.master_merge()
-    
