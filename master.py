@@ -1,5 +1,5 @@
 from mpi4py import MPI
-
+#master class
 class Master():
     def __init__(self,worker_num):
         self.worker_num=worker_num
@@ -7,7 +7,7 @@ class Master():
         self.unigrams = None
         self.bigrams = None
     
-    def even_distributed_data(self,input_file):
+    def even_distributed_data(self,input_file): #for requirement1. distribute data evenly to the workers.
         with open(input_file) as file:
             lines = [line.rstrip() for line in file]
         num_lines=len(lines)
@@ -24,12 +24,12 @@ class Master():
             data.append(lines[start:stop+1])
         return data
     
-    def receive_and_merge_master(self):
+    def receive_and_merge_master(self): #merge datas in main.py file if the method parameter is MASTER
         unigram_dict = dict()
         bigram_dict = dict()
         for i in range(1, self.worker_num + 1):
-            unigrams = self.comm.recv(source = i, tag = 11)
-            bigrams = self.comm.recv(source = i, tag = 12)
+            unigrams = self.comm.recv(source = i, tag = 11) #receive unigram data from workers
+            bigrams = self.comm.recv(source = i, tag = 12)  #receive bigram data from workers
             for unigram in unigrams.keys():
                 if unigram not in unigram_dict:
                     unigram_dict[unigram]=0
@@ -44,14 +44,14 @@ class Master():
         self.bigrams = bigram_dict
         return sum(unigram_dict.values()),sum(bigram_dict.values())
     
-    def receive_and_merge_worker(self):
+    def receive_and_merge_worker(self):  #merge datas in main.py file if the method parameter is WORKERS
         unigram_dict = self.comm.recv(source = self.worker_num, tag = 11)
         bigram_dict = self.comm.recv(source = self.worker_num, tag = 12)
         self.unigrams = unigram_dict
         self.bigrams = bigram_dict
         return sum(unigram_dict.values()),sum(bigram_dict.values())
 
-    def calculate_bigram_probability(self,test_file):
+    def calculate_bigram_probability(self,test_file): #for requirement4. calculate the bigram probabilities.
         with open(test_file) as file:
             lines = [line.rstrip() for line in file]
         for line in lines:

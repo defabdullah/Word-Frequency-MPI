@@ -4,7 +4,7 @@ from mpi4py import MPI
 from master import Master
 from worker import Worker
 
-def parse_args():
+def parse_args(): #parse the arguments. they will be used for some checkings like master method name etc.
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_file', type = str)
     parser.add_argument('--merge_method', type = str)
@@ -28,7 +28,7 @@ else:
 data = comm.scatter(data)
 
 method = parse_args().merge_method
-if rank==0:
+if rank==0: #call merge methods corresponing to the method argument and outputs the results.
     if method == "MASTER":
         unigram_count, bigram_count = master.receive_and_merge_master()
     else:

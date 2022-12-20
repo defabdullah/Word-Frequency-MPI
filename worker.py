@@ -1,5 +1,5 @@
 from mpi4py import MPI
-
+#worker class
 class Worker():
     def __init__(self,data,merge_method, master, rank):
         self.data=data
@@ -8,7 +8,7 @@ class Worker():
         self.rank = rank
         self.comm = MPI.COMM_WORLD
         
-    def unigram_counter(self):
+    def unigram_counter(self): #to count the number of unigrams
         res = dict()
         for d in self.data:
             d = d.split()
@@ -19,7 +19,7 @@ class Worker():
                     res[unigram]+=1
         return res
 
-    def bigram_counter(self):
+    def bigram_counter(self): #to count the number of bigrams
         res = dict()
         for d in self.data:
             d = d.split()
@@ -31,7 +31,7 @@ class Worker():
                     res[bigram]+=1
         return res
     
-    def worker_method_channel(self, tag):
+    def worker_method_channel(self, tag): #for requirement2 and requirement3. send datas to the corresponding node.
         if(tag==11):
             result = self.unigram_counter()
         elif(tag==12):
@@ -54,18 +54,18 @@ class Worker():
                 destination=0
             self.comm.send(received, dest=destination, tag = tag)
     
-    def master_merge(self):
+    def master_merge(self): #for requirement2. merge datas coming from workers
         unigrams = self.unigram_counter()
         bigrams = self.bigram_counter()
 
         self.comm.send(unigrams, dest=0, tag=11)
         self.comm.send(bigrams, dest=0, tag=12)
     
-    def worker_merge(self):
+    def worker_merge(self): #for requirement3. merge datas coming from the last worker.
         self.worker_method_channel(11)
         self.worker_method_channel(12)
     
-    def merge(self):
+    def merge(self): #call merge methods in main.py either WORKERS or MASTER
         if self.merge_method=="WORKERS":
             return self.worker_merge()
         elif self.merge_method=="MASTER":
